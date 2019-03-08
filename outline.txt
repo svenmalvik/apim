@@ -7,7 +7,7 @@ As a successful tech company, we have grown quickly. Through that growth, we hav
 5. Explain products with Users and subscriptions - Illustration
 6. Apim policy model - Illustration
 7. Apim deployment options - Bulletpoints
-8. Create basic swagger in an online editor - Video
+8. Create basic swagger in an online editor - DEMO
 9. Explain canary swagger.yaml file - Image
 10. Explain AzureRm module - Image of doc website
 11. Create apimContext for uat with pwsh - DEMO
