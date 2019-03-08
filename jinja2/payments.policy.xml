@@ -1,0 +1,1025 @@
+
+<policies>
+    <inbound>
+        <!--base: Begin Api scope-->
+        <rate-limit-by-key calls="5" renewal-period="5" increment-condition="@(context.Response.StatusCode &gt;= 200)" counter-key="@(context.Request.Headers.GetValueOrDefault(&quot;X-Device-Id&quot;,&quot;&quot;))" />
+        <!--base: Begin Product scope-->
+        <choose>
+            <when condition="@({{IsVippsDown}} &amp;&amp; !Convert.ToBoolean(context.Request.Headers.GetValueOrDefault(&quot;X-Developer-Access&quot;, &quot;false&quot;)))">
+                <log-to-eventhub logger-id="{{EventHub-Logger-Id}}">@{
+
+                    var header = &quot;
+Environment\tProductName\tUtcDate\tInstance\tRegion\tRequestId\tClientIp\tUserEmail\tApiName\tApiPath\tOperationName\tSubscriptionId\tRequestUrl\tMethod\tStatusCode\tRequestBody\tCorrelationId\tDeviceId\tUserId\tResponseCode\tTotalDuration\tBackendTime&quot;
+;
+
+                    var values = string.Empty;
+
+                    var clientIP = context.Request.IpAddress;
+
+                    var forwarderIP = context.Request.Headers.GetValueOrDefault(&quot;
+X-Forwarded-For&quot;
+, &quot;
+&quot;
+);
+
+                    
+                    if(!string.IsNullOrEmpty(forwarderIP))
+                    {
+                        clientIP = forwarderIP.Split(',').FirstOrDefault().Split(':').FirstOrDefault();
+
+                    }
+                    try
+                    {
+                        var requestBody = &quot;
+NO_BODY&quot;
+;
+
+                        if({{IsRequestBodyLogEnabled}} &amp;
+&amp;
+ context.Request.Body != null)
+                        {
+                            requestBody = context.Variables.ContainsKey(&quot;
+tempRequestBody&quot;
+) ? Regex.Replace((string)context.Variables[&quot;
+tempRequestBody&quot;
+], @&quot;
+\r\n?|\n|\r|\t&quot;
+, &quot;
+&quot;
+) :  Regex.Replace(context.Request.Body.As&lt;
+string&gt;
+(true), @&quot;
+\r\n?|\n|\r|\t&quot;
+, &quot;
+&quot;
+);
+
+                        }
+                        var userId = context.Request.Headers.GetValueOrDefault(&quot;
+X-Customer-Id&quot;
+,   &quot;
+&quot;
+);
+
+                        var totalDurationMS = 0;
+
+                        var backendTimeMS = 0;
+
+                        var responseCode = &quot;
+4060&quot;
+;
+
+                        
+                        values = string.Join(&quot;
+\t&quot;
+, &quot;
+{{EnvironmentName}}&quot;
+, context.Product.Name, DateTime.UtcNow.ToString(&quot;
+s&quot;
+) + &quot;
+Z&quot;
+, context.Deployment.ServiceName,context.Deployment.Region, context.RequestId, clientIP,context.User.Email, context.Api.Name, context.Api.Path, context.Operation.Name,context.Subscription.Id,context.Request.Url.ToUri().ToString(),context.Request.Method, context.Response.StatusCode, requestBody, context.Request.Headers.GetValueOrDefault(&quot;
+X-Global-Context-Id&quot;
+,   &quot;
+&quot;
+),context.Request.Headers.GetValueOrDefault(&quot;
+X-Device-Id&quot;
+,   &quot;
+&quot;
+),userId,responseCode,totalDurationMS,backendTimeMS);
+
+                    }
+                    catch
+                    {
+                        values = string.Join(&quot;
+\t&quot;
+, &quot;
+{{EnvironmentName}}&quot;
+, context.Product.Name, DateTime.UtcNow.ToString(&quot;
+s&quot;
+) + &quot;
+Z&quot;
+, context.Deployment.ServiceName,context.Deployment.Region, context.RequestId, clientIP,context.User.Email, context.Api.Name, context.Api.Path, context.Operation.Name,context.Subscription.Id,context.Request.Url.ToUri().ToString(),context.Request.Method, context.Response.StatusCode, &quot;
+APIMLOGEXCEPTION&quot;
+, context.Request.Headers.GetValueOrDefault(&quot;
+X-Global-Context-Id&quot;
+,   &quot;
+&quot;
+),context.Request.Headers.GetValueOrDefault(&quot;
+X-Device-Id&quot;
+,   &quot;
+&quot;
+),&quot;
+APIMLOGEXCEPTION&quot;
+,&quot;
+APIMLOGEXCEPTION&quot;
+,&quot;
+APIMLOGEXCEPTION&quot;
+,&quot;
+APIMLOGEXCEPTION&quot;
+);
+
+                    }
+                    
+                    return header + &quot;
+\n&quot;
+ + values;
+
+                }</log-to-eventhub>
+                <return-response response-variable-name="existing response variable">
+                    <set-status code="200" reason="Vipps Down" />
+                    <set-body>@{
+
+                            var errorMessage = (context.Request.Headers.GetValueOrDefault(&quot;
+Accept-Language&quot;
+,   &quot;
+&quot;
+)).Trim().StartsWith(&quot;
+nb&quot;
+) ? &quot;
+er ikke tilgjengelig akkurat nå.\nLes mer på vipps.no!&quot;
+ : &quot;
+is currently experiencing some technical problems.\nPlease try again later or go to vipps.no.&quot;
+;
+
+                            var response = new {
+                                    responseInfo = new {
+                                        responseCode = 4060,
+                                        responseMessage = errorMessage},
+                                    result = new {
+                                        message = &quot;
+There is some error in backend service&quot;
+}
+                                        };
+
+                                                           
+                            return JsonConvert.SerializeObject(response);
+
+                        }</set-body>
+                </return-response>
+            </when>
+        </choose>
+        <!--    GET - Request Received time    -->
+        <set-variable name="ReqInTime" value="@(System.DateTime.Now)" />
+        <!--    BEGIN - Add Custom Headers    -->
+        <set-header name="X-App-Type" exists-action="override">
+            <value>VIPPS</value>
+        </set-header>
+        <!--    END - Add Custom Headers    -->
+        <!--   BEGIN - Token Validation   -->
+        <check-header name="Authorization" failed-check-httpcode="400" failed-check-error-message="Bad Request. Supplied token format is not valid!" ignore-case="true">
+            <value>@{
+
+                    var tokenInRequest = context.Request.Headers.GetValueOrDefault(&quot;
+Authorization&quot;
+,   &quot;
+&quot;
+);
+
+                    var regex = new Regex(@&quot;
+^bearer [a-zA-Z0-9\-_]+?\.[a-zA-Z0-9\-_]+?\.([a-zA-Z0-9\-_]+)?$&quot;
+, RegexOptions.IgnoreCase);
+
+                    
+                    return (regex.Match(tokenInRequest)).Success ? tokenInRequest : &quot;
+INVALIDTOKEN&quot;
+;
+
+                  }</value>
+        </check-header>
+        <!--   CUSTOM - Check if token is already expired or not   -->
+        <set-variable value="@{
+
+                                    var tokenInRequest = context.Request.Headers.GetValueOrDefault(&quot;
+Authorization&quot;
+,   &quot;
+&quot;
+);
+
+                                    if(!string.IsNullOrEmpty(tokenInRequest))
+                                    {
+                                        tokenInRequest = tokenInRequest.Remove(0, 7);
+
+                                    }
+                                    Jwt formattedToken = null;
+
+                                    var isExpired = false;
+
+                                    var timeSpan = new TimeSpan();
+
+                                    if (tokenInRequest.TryParseJwt(out formattedToken))
+                                    {
+                                        return formattedToken;
+
+                                    }
+                                    else
+                                    {
+                                        throw new Exception(&quot;
+Supplied token format is not valid!&quot;
+);
+
+                                    }
+                                }" name="access_token" />
+        <choose>
+            <when condition="@{
+
+                                        var formattedToken = (Jwt)context.Variables[&quot;
+access_token&quot;
+];
+
+                                        var expiryTime = formattedToken.ExpirationTime ?? DateTime.Now;
+
+                                        var timeSpan = System.DateTime.Now.Subtract(expiryTime);
+
+
+                                        return timeSpan.TotalMinutes &gt;
+ 0 ? true : false;
+
+                                        }">
+                <return-response response-variable-name="existing response variable">
+                    <set-status code="200" reason="Ok" />
+                    <set-body>@{
+
+                            var response = new {
+                                                 responseInfo = new {
+                                                     responseCode = 403,
+                                                     responseMessage = &quot;
+Forbidden. Access token is expired&quot;
+
+                                                     }
+                                               };
+
+                                               
+                            return JsonConvert.SerializeObject(response);
+
+                        }</set-body>
+                </return-response>
+            </when>
+        </choose>
+        <!--   CUSTOM - Check if token is already expired or not   -->
+        <set-header name="X-Device-Id" exists-action="override">
+            <value>@{
+ 
+                            var token = (Jwt)context.Variables[&quot;
+access_token&quot;
+];
+ 
+                            return token.Claims.GetValueOrDefault(&quot;
+did&quot;
+, &quot;
+&quot;
+);
+
+                         }</value>
+        </set-header>
+        <set-header name="X-Device-Platform" exists-action="override">
+            <value>@{
+ 
+                            var token = (Jwt)context.Variables[&quot;
+access_token&quot;
+];
+ 
+                            return token.Claims.GetValueOrDefault(&quot;
+dep&quot;
+, &quot;
+&quot;
+);
+
+                         }</value>
+        </set-header>
+        <set-header name="X-Device-OS" exists-action="override">
+            <value>@{
+ 
+                            var token = (Jwt)context.Variables[&quot;
+access_token&quot;
+];
+ 
+                            return token.Claims.GetValueOrDefault(&quot;
+dos&quot;
+, &quot;
+&quot;
+);
+
+                         }</value>
+        </set-header>
+        <set-header name="X-App-Version" exists-action="override">
+            <value>@{
+ 
+                            var token = (Jwt)context.Variables[&quot;
+access_token&quot;
+];
+ 
+                            return token.Claims.GetValueOrDefault(&quot;
+avr&quot;
+, &quot;
+&quot;
+);
+
+                         }</value>
+        </set-header>
+        <set-header name="X-Customer-Mobile" exists-action="override">
+            <value>@{
+ 
+                            var token = (Jwt)context.Variables[&quot;
+access_token&quot;
+];
+ 
+                            return token.Claims.GetValueOrDefault(&quot;
+mob&quot;
+, &quot;
+&quot;
+);
+
+                         }</value>
+        </set-header>
+        <set-header name="X-Customer-ID" exists-action="override">
+            <value>@{
+ 
+                            var token = (Jwt)context.Variables[&quot;
+access_token&quot;
+];
+ 
+                            return token.Claims.GetValueOrDefault(&quot;
+uid&quot;
+, &quot;
+&quot;
+);
+
+                         }</value>
+        </set-header>
+        <validate-jwt failed-validation-error-message="Unauthorized. Access token is missing or invalid." failed-validation-httpcode="401" header-name="Authorization">
+            <openid-config url="{{VippsP2POpenidConfigUrl}}" />
+            <required-claims>
+                <claim name="iss" match="all">
+                    <value>{{VippsP2PTokenIssuer}}</value>
+                </claim>
+                <claim name="tokenType" match="all">
+                    <value>AUTH</value>
+                </claim>
+                <claim name="appType" match="all">
+                    <value>VIPPS</value>
+                </claim>
+            </required-claims>
+        </validate-jwt>
+        <choose>
+            <when condition="@{
+
+                        var operationWhiteList = new List&lt;
+string&gt;
+()
+                                            {
+                                                &quot;
+DeleteAddress_v1&quot;
+, &quot;
+GetAddressList_v1&quot;
+, &quot;
+SyncAddress_v1&quot;
+, &quot;
+SyncAndUpdateAddress_v1&quot;
+, &quot;
+UpdateAddress_v1&quot;
+, &quot;
+FetchAllGroupChat_v1&quot;
+, &quot;
+GetAllRecentMessages_v1&quot;
+, &quot;
+GetMessagesByUser_v1&quot;
+,
+                                                &quot;
+GetMessageUnreadCounts_v1&quot;
+, &quot;
+GetUserByNotification_v1&quot;
+, &quot;
+RequestUpdate_v1&quot;
+, &quot;
+SendMesage_v1&quot;
+, &quot;
+FetchRequestedImage_v1&quot;
+, &quot;
+GetBankImage_v1&quot;
+, &quot;
+GetSaleUnitImage_v1&quot;
+, &quot;
+UpdateP2PProfilePhoto_v1&quot;
+,
+                                                &quot;
+GetInfocardDetails_v1&quot;
+, &quot;
+UpdateInfoCardAction_v1&quot;
+, &quot;
+GetOriginalInvoiceURL_v1&quot;
+, &quot;
+GetPendingInvoices_v1&quot;
+, &quot;
+InvoiceDetails_v1&quot;
+, &quot;
+GetMerchantDetails_v1&quot;
+, &quot;
+SearchLocation_v1&quot;
+,
+                                                &quot;
+DeeplinkTransactionRequestDetails_v1&quot;
+, &quot;
+GetDueTransactionList_v1&quot;
+, &quot;
+GetLatestMerchantTransaction_v1&quot;
+, &quot;
+GetLatestMerchantTransaction_v2&quot;
+, &quot;
+GetSurchargeFee_v1&quot;
+, &quot;
+GetTransactionDetailsForMerchantPaymentVipps_v1&quot;
+, &quot;
+GetTransactionListByMerchant_v1&quot;
+,
+                                                &quot;
+TransactionRequestDetails_v1&quot;
+, &quot;
+DeleteConsent_v1&quot;
+, &quot;
+GetAllConsents_v1&quot;
+, &quot;
+GetDeeplinkConsentDetails_v1&quot;
+, &quot;
+GetNotificationConsentDetails_v1&quot;
+, &quot;
+GetPendingRequests_v1&quot;
+, &quot;
+GetShippingMethods_v1&quot;
+,
+                                                &quot;
+UpdateConsent_v1&quot;
+, &quot;
+GetSurchargeFee_v1&quot;
+, &quot;
+GetTransactionDetailsForP2PPaymentVipps_v1&quot;
+, &quot;
+GetTransactionLimits_v1&quot;
+, &quot;
+GetBankAccountDetails_v1&quot;
+, &quot;
+GetBestPaymentSource_v1&quot;
+, &quot;
+GetProfileDetails_v1&quot;
+,
+                                                &quot;
+InvoiceStatusUpdate_v1&quot;
+, &quot;
+SearchP2PProfile_v1&quot;
+, &quot;
+SkipBankId_v1&quot;
+, &quot;
+AddExpense_v1&quot;
+, &quot;
+CreateGroup_v1&quot;
+, &quot;
+DeleteGroup_v1&quot;
+, &quot;
+EditExpense_v1&quot;
+, &quot;
+EditGroup_v1&quot;
+, &quot;
+FetchAllExpenseDistribution_v1&quot;
+,
+                                                &quot;
+FetchAllExpensesByParticipant_v1&quot;
+, &quot;
+FetchAllGroups_v1&quot;
+, &quot;
+FetchAllParticipants_v1&quot;
+, &quot;
+FetchGroupBurden_v1&quot;
+, &quot;
+FetchSettlementExpense_v1&quot;
+, &quot;
+MarkAsSettled_v1&quot;
+, &quot;
+RemoveExpense_v1&quot;
+, &quot;
+SendMessageOnGroupChat_v1&quot;
+,
+                                                &quot;
+GetBankIdURL_v1&quot;
+, &quot;
+GetBankName_v1&quot;
+, &quot;
+GetConfigParam_v1&quot;
+, &quot;
+GetDefaultCard_v1&quot;
+, &quot;
+GetPSP-URL_v1&quot;
+, &quot;
+RegisterPaymentCard_v1&quot;
+, &quot;
+ValidateDeepLink_v1&quot;
+, &quot;
+ValidatePaymentCard_v1&quot;
+, &quot;
+GetBankImage_v1&quot;
+,
+                                                &quot;
+GetInvoicePaymentSource_v2&quot;
+, &quot;
+GetInvoiceSummary_v2&quot;
+, &quot;
+GetInvoiceURL_v2&quot;
+, &quot;
+GetTransactionByProvider_v2&quot;
+, &quot;
+GetTransactionDetail_v2&quot;
+, &quot;
+BlockUser_v1&quot;
+, &quot;
+GetBlockedUsers_v1&quot;
+, &quot;
+ReportAndBlockUser_v1&quot;
+, &quot;
+ReportUser_v1&quot;
+, &quot;
+UnBlockUser_v1&quot;
+,
+                                                &quot;
+ListAgreementForUser_v1&quot;
+, &quot;
+GetAllActiveCharges_v1&quot;
+, &quot;
+FetchAgreementById_v1&quot;
+, &quot;
+UpdateAgreement_v1&quot;
+, &quot;
+GetChargeForAgreement_v1&quot;
+, &quot;
+GetSingleChargeForAgreement_v1&quot;
+
+                                           };
+
+                        return !operationWhiteList.Contains(context.Operation.Name);
+
+                      }">
+                <!--   BLACKLIST - Check if token is blacklisted   -->
+                <send-request ignore-error="false" timeout="6" response-variable-name="BlacklistTokenResponse" mode="new">
+                    <set-url>{{VippsP2PTokenBlacklistUrl}}</set-url>
+                    <set-method>POST</set-method>
+                    <set-header name="X-Customer-Id" exists-action="override">
+                        <value>@(context.Request.Headers.GetValueOrDefault(&quot;X-Customer-Id&quot;,   &quot;&quot;))</value>
+                    </set-header>
+                    <set-header name="Content-Type" exists-action="override">
+                        <value>application/json</value>
+                    </set-header>
+                    <set-body>@{
+
+                    var tokenInRequest = context.Request.Headers.GetValueOrDefault(&quot;
+Authorization&quot;
+, &quot;
+&quot;
+);
+
+                    if(!string.IsNullOrEmpty(tokenInRequest))
+                    {
+                        tokenInRequest = tokenInRequest.Remove(0, 7);
+
+                    }
+                    
+                    var requestBody = new {token = tokenInRequest};
+
+                    return JsonConvert.SerializeObject(requestBody);
+
+                }</set-body>
+                </send-request>
+                <!--   BLACKLIST - Check if token is blacklisted   -->
+                <set-variable name="blacklistResponseCode" value="@((string)(((IResponse)context.Variables[&quot;BlacklistTokenResponse&quot;]).Body.As&lt;JObject&gt;(true))[&quot;responseInfo&quot;][&quot;responseCode&quot;])" />
+                <choose>
+                    <when condition="@((string)context.Variables[&quot;blacklistResponseCode&quot;] == &quot;4048&quot; ? true : false )">
+                        <return-response response-variable-name="InvalidTokenResponse">
+                            <set-status code="200" reason="Unauthorized. Access token is invalid." />
+                            <set-body>@{
+
+                                    var errorMessage = (context.Request.Headers.GetValueOrDefault(&quot;
+Accept-Language&quot;
+,   &quot;
+&quot;
+)).Trim().StartsWith(&quot;
+nb&quot;
+) ? &quot;
+Du er  allerede  innlogget  i Vipps  på  en  annen  telefon. Vennligst  logg  inn på  Vipps  og  prøv  igjen.&quot;
+ : &quot;
+You are already logged into Vipps  on another device. Please log in to Vipps  and try again.&quot;
+;
+
+                                    var response = new {
+                                                         responseInfo = new {
+                                                             responseCode = 9401,
+                                                             responseMessage = errorMessage},
+                                                         result = new {
+                                                             isBlacklisted = true,
+                                                             message = &quot;
+Access token is blacklisted&quot;
+}
+                                                       };
+
+                                                       
+                                    return JsonConvert.SerializeObject(response);
+
+                                }</set-body>
+                        </return-response>
+                    </when>
+                    <when condition="@((string)context.Variables[&quot;blacklistResponseCode&quot;] == &quot;4074&quot; ? true : false )">
+                        <return-response response-variable-name="InvalidTokenResponse">
+                            <set-status code="200" reason="Ok" />
+                            <set-body>@{
+
+                                    var response = new {
+                                                         responseInfo = new {
+                                                             responseCode = &quot;
+7001&quot;
+,
+                                                             responseMessage = &quot;
+Something went wrong. Please contact Vipps admin.&quot;
+}
+                                                       };
+
+                                                       
+                                    return JsonConvert.SerializeObject(response);
+
+                                }</set-body>
+                        </return-response>
+                    </when>
+                    <when condition="@((string)context.Variables[&quot;blacklistResponseCode&quot;] != &quot;9000&quot; ? true : false )">
+                        <return-response response-variable-name="InvalidTokenResponse">
+                            <set-status code="200" reason="Something went wrong in backend application" />
+                            <set-body>@{
+
+                                    var response = new {
+                                                         responseInfo = new {
+                                                             responseCode = 9500,
+                                                             responseMessage = &quot;
+Backend server error.&quot;
+},
+                                                         result = new {
+                                                             message = &quot;
+Backend server error. Something went wrong in backend application&quot;
+}
+                                                       };
+
+                                                       
+                                    return JsonConvert.SerializeObject(response);
+
+                                }</set-body>
+                        </return-response>
+                    </when>
+                </choose>
+            </when>
+        </choose>
+        <!--   END - Token Validation   -->
+        <!--base: Begin Global scope-->
+        <set-variable name="tempRequestBody" value="@{
+ return context.Variables.ContainsKey(&quot;
+tempRequestBody&quot;
+) ? (string)context.Variables[&quot;
+tempRequestBody&quot;
+] : (context.Request.Body != null ? context.Request.Body.As&lt;
+string&gt;
+(true) : &quot;
+Request body is empty&quot;
+);
+ }" />
+        <set-header name="X-Auth-Source" exists-action="override">
+            <value>APIM</value>
+        </set-header>
+        <set-header name="X-Global-Context-Id" exists-action="override">
+            <value>@(context.RequestId.ToString())</value>
+        </set-header>
+        <set-header name="X-APIM-Secret-Key" exists-action="override">
+            <value>{{APIM-SecretKey}}</value>
+        </set-header>
+        <send-one-way-request mode="copy">
+            <set-url>{{BaseWAFAppgatewayUrl}}</set-url>
+        </send-one-way-request>
+        <!--base: End Global scope-->
+        <!--base: End Product scope-->
+        <choose>
+            <when condition="@({{IsPeDown}})">
+                <return-response>
+                    <set-status code="400" reason="Bad Request" />
+                    <set-header name="Content-Type" exists-action="override">
+                        <value>application/json;charset=UTF-8</value>
+                    </set-header>
+                    <set-body>{"kind": "unsupported"}</set-body>
+                </return-response>
+            </when>
+        </choose>
+        <set-backend-service base-url="{{AKSBackendUrl}}/payments/v1" />
+        <!--base: End Api scope-->
+    </inbound>
+    <backend>
+        <!--base: Begin Api scope-->
+        <!--base: Begin Product scope-->
+        <!--base: Begin Global scope-->
+        <choose>
+            <when condition="@(true)">
+                <!--    GET - Request Forward time    -->
+                <set-variable name="ReqFwdTime" value="@(System.DateTime.Now)" />
+                <set-variable value="@{
+
+                    var deviceId = context.Request.Headers.GetValueOrDefault(&quot;
+X-Device-Id&quot;
+, &quot;
+&quot;
+);
+
+                    var testDevices = &quot;
+{{TestDeviceIDs}}";
+                    bool ignoreRequest = string.IsNullOrEmpty(deviceId) || Array.IndexOf(testDevices.Split(','), deviceId) == -1;
+                    if (ignoreRequest) {
+                        return false;
+                    }
+
+                    var apiName = context.Api.Name;
+                    var operationName = context.Operation.Name;
+                    string joinedOperations = "{{AksApiOperations}}";
+                    string fullOperationName = apiName + ":" + operationName;
+                    return Array.IndexOf(joinedOperations.Split(','), fullOperationName) != -1;         
+                }" name="isAks" />
+                <choose>
+                    <when condition="@(context.Variables.GetValueOrDefault&lt;bool&gt;(&quot;isAks&quot;))">
+                        <set-backend-service base-url="{{AKSBackendUrl}}" />
+                    </when>
+                </choose>
+                <forward-request />
+            </when>
+        </choose>
+        <!--base: End Global scope-->
+        <!--base: End Product scope-->
+        <!--base: End Api scope-->
+    </backend>
+    <outbound>
+        <!--base: Begin Api scope-->
+        <!--base: Begin Product scope-->
+        <!--   BEGIN - UnSuccessfull Response Logging   -->
+        <choose>
+            <when condition="@(!{{IsVerboseLoggingEnabled}} &amp;&amp; context.Response.StatusCode &gt;= 300)">
+                <log-to-eventhub logger-id="{{EventHub-Logger-Id}}">@{
+
+                    var header = &quot;
+Environment\tProductName\tUtcDate\tInstance\tRegion\tRequestId\tClientIp\tUserEmail\tApiName\tApiPath\tOperationName\tSubscriptionId\tRequestUrl\tMethod\tStatusCode\tRequestBody\tCorrelationId\tDeviceId\tUserId\tResponseCode\tTotalDuration\tBackendTime&quot;
+;
+
+                        var values = string.Empty;
+
+                        var clientIP = context.Request.IpAddress;
+
+                        var forwarderIP = context.Request.Headers.GetValueOrDefault(&quot;
+X-Forwarded-For&quot;
+, &quot;
+&quot;
+);
+
+                        
+                        if(!string.IsNullOrEmpty(forwarderIP))
+                        {
+                            clientIP = forwarderIP.Split(',').FirstOrDefault().Split(':').FirstOrDefault();
+
+                        }
+                        try
+                        {
+                            var requestBody = &quot;
+NO_BODY&quot;
+;
+
+                            if({{IsRequestBodyLogEnabled}} &amp;
+&amp;
+ context.Request.Body != null)
+                            {
+                                requestBody = context.Variables.ContainsKey(&quot;
+tempRequestBody&quot;
+) ? Regex.Replace((string)context.Variables[&quot;
+tempRequestBody&quot;
+], @&quot;
+\r\n?|\n|\r|\t&quot;
+, &quot;
+&quot;
+) :  Regex.Replace(context.Request.Body.As&lt;
+string&gt;
+(true), @&quot;
+\r\n?|\n|\r|\t&quot;
+, &quot;
+&quot;
+);
+
+                            }
+                            var userId = context.Request.Headers.GetValueOrDefault(&quot;
+X-Customer-Id&quot;
+,   &quot;
+&quot;
+);
+
+                            var totalDurationMS = (System.DateTime.Now.Subtract((DateTime)context.Variables[&quot;
+ReqInTime&quot;
+])).TotalMilliseconds;
+
+                            var backendTimeMS = (System.DateTime.Now.Subtract((DateTime)context.Variables[&quot;
+ReqFwdTime&quot;
+])).TotalMilliseconds;
+
+                            var responseCode = context.Response.Body != null ? (context.Response.Body.As&lt;
+JObject&gt;
+(true).SelectToken(&quot;
+responseInfo.responseCode&quot;
+) ?? context.Response.StatusCode).ToString() : context.Response.StatusCode.ToString();
+
+                            
+                            values = string.Join(&quot;
+\t&quot;
+, &quot;
+{{EnvironmentName}}&quot;
+, context.Product.Name, DateTime.UtcNow.ToString(&quot;
+s&quot;
+) + &quot;
+Z&quot;
+, context.Deployment.ServiceName,context.Deployment.Region, context.RequestId, clientIP,context.User.Email, context.Api.Name, context.Api.Path, context.Operation.Name,context.Subscription.Id,context.Request.Url.ToUri().ToString(),context.Request.Method, context.Response.StatusCode, requestBody, context.Request.Headers.GetValueOrDefault(&quot;
+X-Global-Context-Id&quot;
+,   &quot;
+&quot;
+),context.Request.Headers.GetValueOrDefault(&quot;
+X-Device-Id&quot;
+,   &quot;
+&quot;
+),userId,responseCode,totalDurationMS,backendTimeMS);
+
+                        }
+                        catch
+                        {
+                            values = string.Join(&quot;
+\t&quot;
+, &quot;
+{{EnvironmentName}}&quot;
+, context.Product.Name, DateTime.UtcNow.ToString(&quot;
+s&quot;
+) + &quot;
+Z&quot;
+, context.Deployment.ServiceName,context.Deployment.Region, context.RequestId, clientIP,context.User.Email, context.Api.Name, context.Api.Path, context.Operation.Name,context.Subscription.Id,context.Request.Url.ToUri().ToString(),context.Request.Method, context.Response.StatusCode, &quot;
+APIMLOGEXCEPTION&quot;
+, context.Request.Headers.GetValueOrDefault(&quot;
+X-Global-Context-Id&quot;
+,   &quot;
+&quot;
+),context.Request.Headers.GetValueOrDefault(&quot;
+X-Device-Id&quot;
+,   &quot;
+&quot;
+),&quot;
+APIMLOGEXCEPTION&quot;
+,&quot;
+APIMLOGEXCEPTION&quot;
+,&quot;
+APIMLOGEXCEPTION&quot;
+,&quot;
+APIMLOGEXCEPTION&quot;
+);
+
+                        }
+                        
+                        return header + &quot;
+\n&quot;
+ + values;
+
+                }</log-to-eventhub>
+            </when>
+            <when condition="{{IsVerboseLoggingEnabled}}">
+                <log-to-eventhub logger-id="{{EventHub-Logger-Id}}">@{
+
+                    var header = &quot;
+Environment\tProductName\tUtcDate\tInstance\tRegion\tRequestId\tClientIp\tUserEmail\tApiName\tApiPath\tOperationName\tSubscriptionId\tRequestUrl\tMethod\tStatusCode\tRequestBody\tCorrelationId\tDeviceId\tUserId\tResponseCode\tTotalDuration\tBackendTime&quot;
+;
+
+                        var values = string.Empty;
+
+                        var clientIP = context.Request.IpAddress;
+
+                        var forwarderIP = context.Request.Headers.GetValueOrDefault(&quot;
+X-Forwarded-For&quot;
+, &quot;
+&quot;
+);
+
+                        
+                        if(!string.IsNullOrEmpty(forwarderIP))
+                        {
+                            clientIP = forwarderIP.Split(',').FirstOrDefault().Split(':').FirstOrDefault();
+
+                        }
+                        try
+                        {
+                            var requestBody = &quot;
+NO_BODY&quot;
+;
+
+                            if({{IsRequestBodyLogEnabled}} &amp;
+&amp;
+ context.Request.Body != null)
+                            {
+                                requestBody = context.Variables.ContainsKey(&quot;
+tempRequestBody&quot;
+) ? Regex.Replace((string)context.Variables[&quot;
+tempRequestBody&quot;
+], @&quot;
+\r\n?|\n|\r|\t&quot;
+, &quot;
+&quot;
+) :  Regex.Replace(context.Request.Body.As&lt;
+string&gt;
+(true), @&quot;
+\r\n?|\n|\r|\t&quot;
+, &quot;
+&quot;
+);
+
+                            }
+                            var userId = context.Request.Headers.GetValueOrDefault(&quot;
+X-Customer-Id&quot;
+,   &quot;
+&quot;
+);
+
+                            var totalDurationMS = (System.DateTime.Now.Subtract((DateTime)context.Variables[&quot;
+ReqInTime&quot;
+])).TotalMilliseconds;
+
+                            var backendTimeMS = (System.DateTime.Now.Subtract((DateTime)context.Variables[&quot;
+ReqFwdTime&quot;
+])).TotalMilliseconds;
+
+                            var responseCode = context.Response.Body != null ? (context.Response.Body.As&lt;
+JObject&gt;
+(true).SelectToken(&quot;
+responseInfo.responseCode&quot;
+) ?? context.Response.StatusCode).ToString() : context.Response.StatusCode.ToString();
+
+                            
+                            values = string.Join(&quot;
+\t&quot;
+, &quot;
+{{EnvironmentName}}&quot;
+, context.Product.Name, DateTime.UtcNow.ToString(&quot;
+s&quot;
+) + &quot;
+Z&quot;
+, context.Deployment.ServiceName,context.Deployment.Region, context.RequestId, clientIP,context.User.Email, context.Api.Name, context.Api.Path, context.Operation.Name,context.Subscription.Id,context.Request.Url.ToUri().ToString(),context.Request.Method, context.Response.StatusCode, requestBody, context.Request.Headers.GetValueOrDefault(&quot;
+X-Global-Context-Id&quot;
+,   &quot;
+&quot;
+),context.Request.Headers.GetValueOrDefault(&quot;
+X-Device-Id&quot;
+,   &quot;
+&quot;
+),userId,responseCode,totalDurationMS,backendTimeMS);
+
+                        }
+                        catch
+                        {
+                            values = string.Join(&quot;
+\t&quot;
+, &quot;
+{{EnvironmentName}}&quot;
+, context.Product.Name, DateTime.UtcNow.ToString(&quot;
+s&quot;
+) + &quot;
+Z&quot;
+, context.Deployment.ServiceName,context.Deployment.Region, context.RequestId, clientIP,context.User.Email, context.Api.Name, context.Api.Path, context.Operation.Name,context.Subscription.Id,context.Request.Url.ToUri().ToString(),context.Request.Method, context.Response.StatusCode, &quot;
+APIMLOGEXCEPTION&quot;
+, context.Request.Headers.GetValueOrDefault(&quot;
+X-Global-Context-Id&quot;
+,   &quot;
+&quot;
+),context.Request.Headers.GetValueOrDefault(&quot;
+X-Device-Id&quot;
+,   &quot;
+&quot;
+),&quot;
+APIMLOGEXCEPTION&quot;
+,&quot;
+APIMLOGEXCEPTION&quot;
+,&quot;
+APIMLOGEXCEPTION&quot;
+,&quot;
+APIMLOGEXCEPTION&quot;
+);
+
+                        }
+                        
+                        return header + &quot;
+\n&quot;
+ + values;
+
+                }</log-to-eventhub>
+            </when>
+        </choose>
+        <!--   END - UnSuccessfull Response Logging   -->
+        <!--    BEGIN - Content Digestion of the Response    -->
+        <!--    END - Content Digestion of the Response    -->
+        <!--base: End Product scope-->
+        <!--base: End Api scope-->
+    </outbound>
+    <on-error />
+</policies>
+

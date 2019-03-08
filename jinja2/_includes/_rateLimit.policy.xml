@@ -1,0 +1,1 @@
+<rate-limit-by-key calls="@@calls@@" renewal-period="@@renewal@@" increment-condition="@(context.Response.StatusCode &gt;= 200)" counter-key="@(context.Request.Headers.GetValueOrDefault(&quot;X-Device-Id&quot;,&quot;&quot;))" />

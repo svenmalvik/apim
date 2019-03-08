@@ -1,6 +1,8 @@
 <policies>
     <inbound>
-        {% include '_mock.policy.xml' %}
+        {% with param_1="IsCanaryDown" %}
+            {% include '_includes/_mock.policy.xml' %}
+        {% endwith %}
         <set-backend-service base-url="{{AKSBackendUrl}}/canary/" />
     </inbound>
     <backend>
