@@ -20,7 +20,7 @@ Set-AzApiManagementPolicy -Context $apimContext -ApiId "canary" -PolicyFilePath 
 New-AzApiManagementProduct -Context $apimContext -ProductId "canary" -Title "Canary" -Description "Infrastructure test API" -SubscriptionRequired $True -State "published"
 
 # Add canary api to canary product
-Add-AzureRmApiManagementApiToProduct -Context $apimContext -ProductId "canary" -ApiId "canary"
+Add-AzApiManagementApiToProduct -Context $apimContext -ProductId "canary" -ApiId "canary"
 
 # Optional: Deploy isCanaryDown property with pwsh.
 New-AzApiManagementProperty -Context $apimContext -PropertyId "isCanaryDown" -Name "isCanaryDown" -Value "true"
