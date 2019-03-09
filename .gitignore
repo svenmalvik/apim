@@ -1,3 +1,5 @@
 .png
 .m4a
-VippsMeterial/*
+VippsMaterial/
+**/media/*
+\.DS_Store
