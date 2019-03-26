@@ -1,0 +1,68 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "apiManagementServiceName": {
+        "type": "string"
+      },
+      "_artifactsLocation": {
+        "type": "string",
+        "metadata": {
+          "description": "The location of resources, such as templates, swagger files and policy xml files, that the template depends on"
+        },
+        "defaultValue": ""
+      },
+      "_artifactsLocationSasToken": {
+        "type": "securestring",
+        "metadata": {
+          "description": "Auto-generated token to access _artifactsLocation"
+        },
+        "defaultValue": ""
+      }
+    },
+    "variables": {
+      "productName": "canary",
+      "resourceBaseLocation": "/resources/products/InternalProducts/canary/",
+      "resourceLocation": "[concat(parameters('_artifactsLocation'), variables('resourceBaseLocation'))]"
+    },
+    "resources": [
+      {
+        "apiVersion": "2018-01-01",
+        "type": "Microsoft.ApiManagement/service/products",
+        "name": "[concat(parameters('apiManagementServiceName'), '/', variables('productName'))]",
+        "properties": {
+          "displayName": "[variables('productName')]",
+          "description": "Infrastructure test API",
+          "subscriptionRequired": true,
+          "approvalRequired": false,
+          "subscriptionsLimit": 1,
+          "state": "published"
+        },
+        "resources": [
+          {
+            "apiVersion": "2018-01-01",
+            "type": "apis",
+            "name": "canary",
+            "dependsOn": [
+              "[concat('Microsoft.ApiManagement/service/', parameters('apiManagementServiceName'), '/products/', variables('productName'))]"
+            ]
+          }
+        ]
+      },
+      {
+        "apiVersion": "2018-01-01",
+        "type": "Microsoft.ApiManagement/service/products/policies",
+        "name": "[concat(parameters('apiManagementServiceName'), '/', variables('productName'), '/policy')]",
+        "dependsOn": [
+          "[concat('Microsoft.ApiManagement/service/', parameters('apiManagementServiceName'), '/products/', variables('productName'))]"
+        ],
+        "properties": {
+          "contentFormat": "xml-link",
+          "policyContent": "[concat(variables('resourceLocation'), 'canary.policy.xml', parameters('_artifactsLocationSasToken'))]"
+        }
+      }
+    ],
+    "outputs": {
+    }
+  }
+

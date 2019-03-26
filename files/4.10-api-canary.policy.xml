@@ -1,0 +1,14 @@
+<policies>
+    <inbound>
+        
+        <tal metal:use-macro='load:_mock.policy.xml' tal:define="isServiceDown 'isCanaryDown'"></tal>
+
+        <set-backend-service base-url="{{AKSBackendUrl}}/canary/" />
+    </inbound>
+    <backend>
+        <base />
+    </backend>
+    <outbound>
+        <base />
+    </outbound>
+</policies>

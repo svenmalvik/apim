@@ -1,0 +1,112 @@
+# This is an example of app specific values. Each app that uses this chart to create services needs to have a values.yaml in its repository. 
+# To view the output yaml try running
+# helm template . --set global.env=prod --values example-values.yaml
+
+# The service section describes how this application is exposed to other services running in the same Kubernetes cluster (via Kubernetes service objects)
+service:
+  # Which port you want the service exposed as
+  port: 80
+  # You can also expose multiple ports on the same service. Note that in that case, you MUST use containerPorts (note plural), see documentation on this
+  # attribute below. Here is an example of exposing multiple ports:
+  # ports:
+  #  - name: http   # Exposes the same port as defined in the corresondingly-named container port (service port 8080 -> container port 8080)
+  #  - name: https  # Expose the container port named https
+  #    port: 443    # But remap it to a different port, so service port 443 maps to container port 8443
+  # You must use either service.port or service.ports, not both at the same time. If you define both, service.port will be ignored.
+
+# The ingress section describes how this application is exposed to services outside this Kubernetes cluster (via Kubernetes ingress objects)
+# If inbound traffic from outside the cluster should be allowed, set ingress.enabled to be true. This will create a route on the internal load balancer forwarding requests matching the path.
+# In case of path naming conflicts the first service will reserve the path and the next conflicting services will not receive traffic as it is forwarded to the first instead.
+# Note that currently, ingress is not compatible with use of multiple service/container ports.
+ingress:
+  enabled: true
+  # The value used for ingress path AND application context path. Defaults to /{{ .Values.app.name }}
+  path: /foo_bar
+  # Defaults to {{ .Values.global.env }}.aks-test.local
+  host: foo-bar
+  # This property will configure nginx to allow request body size to higher value
+  extendedBodySize: true
+  #  Sets the algorithm to use for load balancing. The value can either be:
+  #  round_robin: to use the default round robin loadbalancer
+  #  least_conn: to use the least connected method (note that this is available only in non-dynamic mode: --enable-dynamic-configuration=false)
+  #  ip_hash: to use a hash of the server for routing (note that this is available only in non-dynamic mode: --enable-dynamic-configuration=false, but alternatively you can consider using nginx.ingress.kubernetes.io/upstream-hash-by)
+  #  ewma: to use the Peak EWMA method for routing (implementation)
+  loadBalancingAlgorithm: "ewma"
+
+# Enable HorizontalPodAutoscaler, to scale deployment up and down based on resource utilization
+autoScaling:
+  cpu: true
+  memory: true
+
+app:
+  # The name of the app is used to name your deployment resources in AKS, and also works as a default value for
+  # ingress path/context path, if not explicitly configured using ingress.path, above.
+  name: foobar
+  # A custom entrypoint if, for some reason, the ENTRYPOINT value from the Dockerfile cannot be used. This should be
+  # considered a fallback, to be used rarely.
+  entrypoint: /some/custom/entrypoint
+replicas: 3
+rollingUpdateMaxSurge: 100%
+rollingUpdateMaxUnavailable: 0
+
+# The containerPort attribute defines what port the application exposes.
+containerPort: 8080
+# It is also possible to define multiple ports. The example below exposes two port, one on 8080 and the other on 8443.
+# containerPorts:
+#  - name: http
+#    containerPort: 8080
+#  - name: https
+#    containerPort: 8443
+# You must use either containerPort or containerPorts, not both at the same time. If you define both, containerPort will be ignored.
+
+livenessProbe:
+# tcp protocol can be configured for health check, then path property is not relevant
+# protocol: tcp
+  path: /health
+  port: 8080
+  initialDelaySeconds: 60
+  periodSeconds: 10
+readinessProbe:
+# tcp protocol can be configured for health check, then path property is not relevant
+# protocol: tcp
+  path: /health
+  port: 8080
+  # The default initial delay before checking if a service is ready can be overridden. Below is an example of postponing the check for one minute. Such a change can be a suitable solution
+  # for our slower Spring applications. See https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/ for more information. This also applies to the 
+  # liveness probe above.
+  initialDelaySeconds: 60
+  periodSeconds: 10
+# If not specified, default values will be used for limits and request. It is important to set sensible limits. It is advisable to set them a bit high at first.
+# Observe pods during performance test. Adjust the limits reasonably according to results from the performance tests.
+# Java apps need lots of CPU at startup, so resourcesLimitsCpu can well be set at "3", i.e. three full CPUs.
+resourcesLimitsCpu: 500m
+resourcesLimitsMemory: 256Mi
+resourcesRequestsCpu: 250m
+resourcesRequestsMemory: 256Mi
+
+# For every key the value must be a map with <name> and <key> properties, where name refers to secret name in same namespace and key refers to particular key inside that secret
+# As result, value of the secret will be injected as environment variable in container
+envsSecretKeyRef:
+  EXAMPLE_ENV_VAR_FROM_SECRET:
+    name: "foobar-secret-name"
+    key: "foobar-secret-key"
+
+# For every key the value must be a list of key-value pairs. The list of key-value pairs must have one key called _default specifying the fall back value. 
+# The other key-value pairs are created per environment. If no environment value is specified it will use the fallback value. Environment is set by global
+# environment variable called global.env that must be set during generation of k8s yaml files. See example command that will generate k8s yaml files 
+# in the top comment of this file.
+envs:
+  EXAMPLE_KEY_VAULT: 
+    _default: "vipps-foobar-prod-kv"
+    uat: "vipps-foobar-uat-kv"
+    prod: "vipps-foobar-prod-kv"
+  LOG_JSON:
+    _default: true
+  FOOBAR_COSMOS_URL: 
+    _default: "https://vipps-prod-foobar.documents.azure.com:443/"
+    uat: "https://vipps-dev-foobar.documents.azure.com:443/"
+    prod: "https://vipps-prod-foobar.documents.azure.com:443/"
+
+global:
+  # This value must be overridden by the deploy job. It sets the environment ensuring the corresponding environment values from above are used.
+  env: _default

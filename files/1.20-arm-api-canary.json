@@ -1,0 +1,53 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "apiManagementServiceName": {
+            "type": "string"
+        },
+        "_artifactsLocation": {
+            "type": "string",
+            "metadata": {
+                "description": "The location of resources, such as templates, swagger files and policy xml files, that the template depends on"
+            }, "defaultValue": "" },
+        "_artifactsLocationSasToken": {
+            "type": "securestring",
+            "metadata": {
+                "description": "Auto-generated token to access _artifactsLocation"
+            },
+            "defaultValue": ""
+        }
+    },
+    "variables": {
+        "apiName": "canary",
+        "resourceBaseLocation": "/canary/",
+        "resourceLocation":  "[concat(parameters('_artifactsLocation'), variables('resourceBaseLocation'))]"
+    },
+    "resources": [
+        {
+            "apiVersion": "2018-01-01",
+            "type": "Microsoft.ApiManagement/service/apis",
+            "name": "[concat(parameters('apiManagementServiceName'), '/', variables('apiName'))]",
+            "properties": {
+                "contentFormat": "swagger-link-json",
+                "contentValue": "[concat(variables('resourceLocation'), variables('apiName'), '.swagger.json', parameters('_artifactsLocationSasToken'))]",
+                "path": "canary"
+            }
+        },
+        {
+            "apiVersion": "2018-01-01",
+            "type": "Microsoft.ApiManagement/service/apis/policies",
+            "name": "[concat(parameters('apiManagementServiceName'), '/', variables('apiName'), '/', 'policy')]",
+            "dependsOn": [
+                "[concat('Microsoft.ApiManagement/service/', parameters('apiManagementServiceName'), '/apis/', variables('apiName'))]"
+            ],
+            "properties": {
+                "contentFormat": "xml-link",
+                "policyContent": "[concat(variables('resourceLocation'), variables('apiName'), '.policy.xml', parameters('_artifactsLocationSasToken'))]"
+            }
+        }
+    ],
+    "outputs": {
+    }
+}
+

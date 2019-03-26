@@ -1,0 +1,11 @@
+<choose>
+		<when condition="@({{${isServiceDown}}})">
+				<return-response>
+						<set-status code="400" reason="Bad Request" />
+						<set-header name="Content-Type" exists-action="override">
+								<value>application/json;charset=UTF-8</value>
+						</set-header>
+						<set-body>{"kind": "unsupported"}</set-body>
+				</return-response>
+		</when>
+</choose>

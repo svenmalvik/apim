@@ -1,0 +1,284 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "apiManagementServiceName": {
+        "type": "string"
+      },
+      "_artifactsLocation": {
+        "type": "string",
+        "metadata": {
+          "description": "The location of resources, such as templates, swagger files and policy xml files, that the template depends on"
+        },
+        "defaultValue": ""
+      },
+      "_artifactsLocationSasToken": {
+        "type": "securestring",
+        "metadata": {
+          "description": "Auto-generated token to access _artifactsLocation"
+        },
+        "defaultValue": ""
+      }
+    },
+    "variables": {
+      "productName": "Vipps-1_8-Auth-Services",
+      "resourceBaseLocation": "/resources/products/VippsMobileProducts/Vipps-1_8-Auth-Services/",
+      "resourceLocation": "[concat(parameters('_artifactsLocation'), variables('resourceBaseLocation'))]"
+    },
+    "resources": [
+      {
+        "apiVersion": "2018-01-01",
+        "type": "Microsoft.ApiManagement/service/products",
+        "name": "[concat(parameters('apiManagementServiceName'), '/', variables('productName'))]",
+        "properties": {
+          "displayName": "[variables('productName')]",
+          "description": "Product for Vipps mobility APIs that are authorized auth access token",
+          "subscriptionRequired": true,
+          "approvalRequired": false,
+          "subscriptionsLimit": 1,
+          "state": "published"
+        },
+        "resources": [
+          {
+            "apiVersion": "2018-01-01",
+            "type": "apis",
+            "name": "Vipps-1_8-Auth-Address-Svc",
+            "dependsOn": [
+              "[concat('Microsoft.ApiManagement/service/', parameters('apiManagementServiceName'), '/products/', variables('productName'))]"
+            ]
+          },
+          {
+            "apiVersion": "2018-01-01",
+            "type": "apis",
+            "name": "Vipps-1_8-Auth-Chat-Svc",
+            "dependsOn": [
+              "[concat('Microsoft.ApiManagement/service/', parameters('apiManagementServiceName'), '/products/', variables('productName'))]"
+            ]
+          },
+          {
+            "apiVersion": "2018-01-01",
+            "type": "apis",
+            "name": "Vipps-1_8-Auth-Customer-Svc",
+            "dependsOn": [
+              "[concat('Microsoft.ApiManagement/service/', parameters('apiManagementServiceName'), '/products/', variables('productName'))]"
+            ]
+          },
+          {
+            "apiVersion": "2018-01-01",
+            "type": "apis",
+            "name": "Vipps-1_8-Auth-Ecom-Svc",
+            "dependsOn": [
+              "[concat('Microsoft.ApiManagement/service/', parameters('apiManagementServiceName'), '/products/', variables('productName'))]"
+            ]
+          },
+          {
+            "apiVersion": "2018-01-01",
+            "type": "apis",
+            "name": "Vipps-1_8-Auth-Image-Svc",
+            "dependsOn": [
+              "[concat('Microsoft.ApiManagement/service/', parameters('apiManagementServiceName'), '/products/', variables('productName'))]"
+            ]
+          },
+          {
+            "apiVersion": "2018-01-01",
+            "type": "apis",
+            "name": "Vipps-1_8-Auth-InApp-Svc",
+            "dependsOn": [
+              "[concat('Microsoft.ApiManagement/service/', parameters('apiManagementServiceName'), '/products/', variables('productName'))]"
+            ]
+          },
+          {
+            "apiVersion": "2018-01-01",
+            "type": "apis",
+            "name": "Vipps-1_8-Auth-InfoCard-Svc",
+            "dependsOn": [
+              "[concat('Microsoft.ApiManagement/service/', parameters('apiManagementServiceName'), '/products/', variables('productName'))]"
+            ]
+          },
+          {
+            "apiVersion": "2018-01-01",
+            "type": "apis",
+            "name": "Vipps-1_8-Auth-InStore-Svc",
+            "dependsOn": [
+              "[concat('Microsoft.ApiManagement/service/', parameters('apiManagementServiceName'), '/products/', variables('productName'))]"
+            ]
+          },
+          {
+            "apiVersion": "2018-01-01",
+            "type": "apis",
+            "name": "Vipps-1_8-Auth-Invoice-Svc",
+            "dependsOn": [
+              "[concat('Microsoft.ApiManagement/service/', parameters('apiManagementServiceName'), '/products/', variables('productName'))]"
+            ]
+          },
+          {
+            "apiVersion": "2018-01-01",
+            "type": "apis",
+            "name": "Vipps-1_8-Auth-eInvoice-Svc",
+            "dependsOn": [
+              "[concat('Microsoft.ApiManagement/service/', parameters('apiManagementServiceName'), '/products/', variables('productName'))]"
+            ]
+          },
+          {
+            "apiVersion": "2018-01-01",
+            "type": "apis",
+            "name": "Vipps-1_8-Auth-Loan-Svc",
+            "dependsOn": [
+              "[concat('Microsoft.ApiManagement/service/', parameters('apiManagementServiceName'), '/products/', variables('productName'))]"
+            ]
+          },
+          {
+            "apiVersion": "2018-01-01",
+            "type": "apis",
+            "name": "Vipps-1_8-Auth-Merchant-Svc",
+            "dependsOn": [
+              "[concat('Microsoft.ApiManagement/service/', parameters('apiManagementServiceName'), '/products/', variables('productName'))]"
+            ]
+          },
+          {
+            "apiVersion": "2018-01-01",
+            "type": "apis",
+            "name": "Vipps-1_8-Auth-Merchant-Transaction-Svc",
+            "dependsOn": [
+              "[concat('Microsoft.ApiManagement/service/', parameters('apiManagementServiceName'), '/products/', variables('productName'))]"
+            ]
+          },
+          {
+            "apiVersion": "2018-01-01",
+            "type": "apis",
+            "name": "Vipps-1_8-Auth-OneClickNSignUpLogin-Svc",
+            "dependsOn": [
+              "[concat('Microsoft.ApiManagement/service/', parameters('apiManagementServiceName'), '/products/', variables('productName'))]"
+            ]
+          },
+          {
+            "apiVersion": "2018-01-01",
+            "type": "apis",
+            "name": "Vipps-1_8-Auth-P2B-Svc",
+            "dependsOn": [
+              "[concat('Microsoft.ApiManagement/service/', parameters('apiManagementServiceName'), '/products/', variables('productName'))]"
+            ]
+          },
+          {
+            "apiVersion": "2018-01-01",
+            "type": "apis",
+            "name": "Vipps-1_8-Auth-P2P-Transaction-Svc",
+            "dependsOn": [
+              "[concat('Microsoft.ApiManagement/service/', parameters('apiManagementServiceName'), '/products/', variables('productName'))]"
+            ]
+          },
+          {
+            "apiVersion": "2018-01-01",
+            "type": "apis",
+            "name": "Vipps-1_8-Auth-PaymentCard-Svc",
+            "dependsOn": [
+              "[concat('Microsoft.ApiManagement/service/', parameters('apiManagementServiceName'), '/products/', variables('productName'))]"
+            ]
+          },
+          {
+            "apiVersion": "2018-01-01",
+            "type": "apis",
+            "name": "Vipps-1_8-Auth-PaymentSource-Svc",
+            "dependsOn": [
+              "[concat('Microsoft.ApiManagement/service/', parameters('apiManagementServiceName'), '/products/', variables('productName'))]"
+            ]
+          },
+          {
+            "apiVersion": "2018-01-01",
+            "type": "apis",
+            "name": "Vipps-1_8-Auth-PaymentsAPI-Svc",
+            "dependsOn": [
+              "[concat('Microsoft.ApiManagement/service/', parameters('apiManagementServiceName'), '/products/', variables('productName'))]"
+            ]
+          },
+          {
+            "apiVersion": "2018-01-01",
+            "type": "apis",
+            "name": "Vipps-1_8-Auth-Profile-Svc",
+            "dependsOn": [
+              "[concat('Microsoft.ApiManagement/service/', parameters('apiManagementServiceName'), '/products/', variables('productName'))]"
+            ]
+          },
+          {
+            "apiVersion": "2018-01-01",
+            "type": "apis",
+            "name": "Vipps-1_8-Auth-Security-Svc",
+            "dependsOn": [
+              "[concat('Microsoft.ApiManagement/service/', parameters('apiManagementServiceName'), '/products/', variables('productName'))]"
+            ]
+          },
+          {
+            "apiVersion": "2018-01-01",
+            "type": "apis",
+            "name": "Vipps-1_8-Auth-SplitBill-Svc",
+            "dependsOn": [
+              "[concat('Microsoft.ApiManagement/service/', parameters('apiManagementServiceName'), '/products/', variables('productName'))]"
+            ]
+          },
+          {
+            "apiVersion": "2018-01-01",
+            "type": "apis",
+            "name": "Vipps-1_8-Auth-UnAuth-Common-Svc",
+            "dependsOn": [
+              "[concat('Microsoft.ApiManagement/service/', parameters('apiManagementServiceName'), '/products/', variables('productName'))]"
+            ]
+          },
+          {
+            "apiVersion": "2018-01-01",
+            "type": "apis",
+            "name": "Vipps-1_8-Auth-UnAuth-Image-Svc",
+            "dependsOn": [
+              "[concat('Microsoft.ApiManagement/service/', parameters('apiManagementServiceName'), '/products/', variables('productName'))]"
+            ]
+          },
+          {
+            "apiVersion": "2018-01-01",
+            "type": "apis",
+            "name": "Vipps-1_8-Auth-Recurring-Payment-Svc",
+            "dependsOn": [
+              "[concat('Microsoft.ApiManagement/service/', parameters('apiManagementServiceName'), '/products/', variables('productName'))]"
+            ]
+          },
+          {
+            "apiVersion": "2018-01-01",
+            "type": "apis",
+            "name": "Vipps-1_8-Auth-U15-Svc",
+            "dependsOn": [
+              "[concat('Microsoft.ApiManagement/service/', parameters('apiManagementServiceName'), '/products/', variables('productName'))]"
+            ]
+          },
+          {
+            "apiVersion": "2018-01-01",
+            "type": "apis",
+            "name": "Vipps-1_8-Auth-U15-VaaP-Svc",
+            "dependsOn": [
+              "[concat('Microsoft.ApiManagement/service/', parameters('apiManagementServiceName'), '/products/', variables('productName'))]"
+            ]
+          },
+          {
+            "apiVersion": "2018-01-01",
+            "type": "apis",
+            "name": "Vipps-1_8-Auth-Invoice-Scanner-Svc",
+            "dependsOn": [
+              "[concat('Microsoft.ApiManagement/service/', parameters('apiManagementServiceName'), '/products/', variables('productName'))]"
+            ]
+          }
+        ]
+      },
+      {
+        "apiVersion": "2018-01-01",
+        "type": "Microsoft.ApiManagement/service/products/policies",
+        "name": "[concat(parameters('apiManagementServiceName'), '/', variables('productName'), '/policy')]",
+        "dependsOn": [
+          "[concat('Microsoft.ApiManagement/service/', parameters('apiManagementServiceName'), '/products/', variables('productName'))]"
+        ],
+        "properties": {
+          "contentFormat": "xml-link",
+          "policyContent": "[concat(variables('resourceLocation'), 'THIS_PRODUCT.policy.xml', parameters('_artifactsLocationSasToken'))]"
+        }
+      }
+    ],
+    "outputs": {
+    }
+  }
+

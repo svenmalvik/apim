@@ -1,0 +1,21 @@
+{
+  "Vipps-eCommerce-Services": {
+    "id": "Vipps-SOME-OTHER_PRODUCT-Services",
+    "title": "Vipps-SOME-OTHER_PRODUCT-Services",
+    "description": "Description of Vipps-SOME-OTHER_PRODUCT-Services",
+    "apis": [
+      "api_1",
+      "api_2",
+      "api_3",
+      "canary"
+    ]
+  },
+  "canary": {
+    "id": "canary",
+    "title": "canary",
+    "description": "Infrastructure test API",
+    "apis": [
+      "canary"
+    ]
+  }
+}
