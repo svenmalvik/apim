@@ -1,7 +1,7 @@
 {
   "AKSBackendUrl": {
-    "uat": "http://uat.aks-test.local",
     "sit": "http://sit.aks-test.local",
+    "uat": "http://uat.aks-test.local",
     "mt": "http://mt.aks-prod.local",
     "pt": "http://pt.aks-test.local",
     "prod": "http://prod.aks-prod.local"
